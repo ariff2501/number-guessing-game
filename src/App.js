@@ -460,19 +460,31 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
   // GAME OVER
   if (currentRoom.gameState === "gameOver") {
     const isWinner = currentRoom.winner === currentPlayer.name;
+    const isDraw = currentRoom.winner === "DRAW";
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
           <div className="mb-6">
-            <div className="text-6xl mb-4">{isWinner ? "🎉" : "😞"}</div>
+            <div className="text-6xl mb-4">
+              {isDraw ? "🤝" : isWinner ? "🎉" : "😞"}
+            </div>
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
               Game Over!
             </h2>
             <p className="text-xl font-semibold">
-              <span className={isWinner ? "text-green-600" : "text-red-600"}>
-                {isWinner ? "You Win!" : `${currentRoom.winner} Wins!`}
-              </span>
+              {isDraw ? (
+                <span className="text-blue-600">It's a Draw!</span>
+              ) : (
+                <span className={isWinner ? "text-green-600" : "text-red-600"}>
+                  {isWinner ? "You Win!" : `${currentRoom.winner} Wins!`}
+                </span>
+              )}
             </p>
+            {isDraw && (
+              <p className="text-sm text-gray-600 mt-2">
+                Both players solved it with the same number of guesses!
+              </p>
+            )}
           </div>
 
           <div className="space-y-4 mb-6">
@@ -519,14 +531,29 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
                 {currentRoom.sequenceLength}-digit sequences
               </p>
             </div>
-            <div
-              className={`px-4 py-2 rounded-lg font-semibold ${
-                isMyTurn
-                  ? "bg-green-100 text-green-800"
-                  : "bg-yellow-100 text-yellow-800"
-              }`}
-            >
-              {isMyTurn ? "🎯 Your Turn" : `⏳ ${opponent?.name}'s Turn`}
+            <div className="text-center">
+              {currentRoom.gameState === "finalChance" ? (
+                <div className="px-4 py-2 rounded-lg font-semibold bg-orange-100 text-orange-800 border-2 border-orange-300">
+                  ⚡ FINAL CHANCE!
+                  <div className="text-sm mt-1">
+                    {currentRoom.firstToSolve} solved it first!
+                    <br />
+                    {isMyTurn
+                      ? "🎯 Your last chance to tie!"
+                      : `⏳ ${opponent?.name}'s last chance!`}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`px-4 py-2 rounded-lg font-semibold ${
+                    isMyTurn
+                      ? "bg-green-100 text-green-800"
+                      : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  {isMyTurn ? "🎯 Your Turn" : `⏳ ${opponent?.name}'s Turn`}
+                </div>
+              )}
             </div>
           </div>
         </div>
