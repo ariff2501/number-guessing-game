@@ -255,7 +255,10 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3002, () => {
-  console.log('🚀 Game server running on http://localhost:3002');
+const PORT = process.env.PORT || 3002;
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 Game server running on ${HOST}:${PORT}`);
   console.log('🎮 Ready for number guessing battles!');
 });
