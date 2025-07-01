@@ -668,10 +668,10 @@ function App() {
 
   // Connect to server
   useEffect(() => {
-    const socket = io(process.env.NODE_ENV === 'production' 
-      ? 'https://number-guessing-game-qpe5.onrender.com'  // Online
-      : 'http://localhost:3002'          // Local
-    );
+    const newSocket = io(process.env.NODE_ENV === 'production' 
+  ? 'https://your-app.onrender.com'  // Online
+  : 'http://localhost:3002'          // Local
+);
 
     newSocket.on("connect", () => {
       console.log("✅ Connected to server");
