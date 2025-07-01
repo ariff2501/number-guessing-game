@@ -668,11 +668,16 @@ function App() {
 
   // Connect to server
   useEffect(() => {
-    const newSocket = io(process.env.NODE_ENV === 'production' 
-  ? 'https://your-app.onrender.com'  // Online
-  : 'http://localhost:3002'          // Local
-);
+    const socketURL =
+      process.env.NODE_ENV === "production"
+        ? "https://number-guessing-game-qpe5.onrender.com" // Your Render URL
+        : "http://localhost:3002";
 
+    console.log("🔍 NODE_ENV:", process.env.NODE_ENV);
+    console.log("🔍 Socket trying to connect to:", socketURL);
+    console.log("🔍 Current window location:", window.location.href);
+
+    const newSocket = io(socketURL);
     newSocket.on("connect", () => {
       console.log("✅ Connected to server");
       setConnected(true);

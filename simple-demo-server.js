@@ -1,14 +1,22 @@
 const http = require('http');
+const express = require('express'); // Add this
+const path = require('path'); 
 const socketIo = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
 
-const server = http.createServer();
+// Create Express app
+const app = express(); // Add this line
+const server = http.createServer(app); // Update this line
+
 const io = socketIo(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
   }
 });
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'build')));
 
 // Game rooms storage (server-side)
 const gameRooms = new Map();
@@ -253,6 +261,11 @@ io.on('connection', (socket) => {
       }
     }
   });
+});
+
+// Handle React routing (must be AFTER socket logic)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3002;
