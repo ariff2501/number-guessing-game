@@ -267,6 +267,396 @@ const WaitingRoom = ({
     </div>
   </div>
 );
+// Render feedback icons
+const renderFeedback = (feedback) => {
+  return (
+    <div className="flex items-center space-x-3 mt-1">
+      {feedback.green > 0 && (
+        <div className="flex items-center space-x-1">
+          <CheckCircle size={16} className="text-green-600" />
+          <span className="text-sm font-semibold text-green-600">
+            {feedback.green}
+          </span>
+        </div>
+      )}
+      {feedback.yellow > 0 && (
+        <div className="flex items-center space-x-1">
+          <AlertTriangle size={16} className="text-yellow-600" />
+          <span className="text-sm font-semibold text-yellow-600">
+            {feedback.yellow}
+          </span>
+        </div>
+      )}
+      {feedback.red > 0 && (
+        <div className="flex items-center space-x-1">
+          <XCircle size={16} className="text-red-600" />
+          <span className="text-sm font-semibold text-red-600">
+            {feedback.red}
+          </span>
+        </div>
+      )}
+      {feedback.green === 0 && feedback.yellow === 0 && feedback.red === 0 && (
+        <span className="text-gray-400 text-sm">No feedback</span>
+      )}
+    </div>
+  );
+};
+// Add this component before your main App function
+const MySequenceDisplay = ({ sequence, sequenceLength }) => {
+  const [showSequence, setShowSequence] = useState(false);
+
+  if (!sequence || sequence.length !== sequenceLength) {
+    return null; // Don't show if sequence not set
+  }
+
+  return (
+    <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+      <div className="text-sm font-medium text-blue-700">My Sequence:</div>
+      <div className="relative">
+        <div
+          className={`font-mono text-lg font-bold ${
+            showSequence
+              ? "text-blue-800"
+              : "text-transparent bg-blue-300 rounded"
+          }`}
+        >
+          {showSequence ? sequence : "●".repeat(sequenceLength)}
+        </div>
+        {!showSequence && (
+          <div className="absolute inset-0 flex items-center justify-center text-blue-600 text-lg font-mono">
+            {"●".repeat(sequenceLength)}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={() => setShowSequence(!showSequence)}
+        className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+        title={showSequence ? "Hide sequence" : "Show sequence"}
+      >
+        {showSequence ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+};
+const DetailedRecap = ({ currentRoom, currentPlayer, opponent }) => {
+  // Calculate stats
+  const myStats = {
+    name: currentPlayer.name,
+    guesses: currentPlayer.guesses.length,
+    sequence: currentPlayer.sequence,
+    avgGreen:
+      currentPlayer.guesses.length > 0
+        ? (
+            currentPlayer.guesses.reduce(
+              (sum, g) => sum + g.feedback.green,
+              0
+            ) / currentPlayer.guesses.length
+          ).toFixed(1)
+        : 0,
+  };
+
+  const opponentStats = {
+    name: opponent.name,
+    guesses: opponent.guesses.length,
+    sequence: opponent.sequence,
+    avgGreen:
+      opponent.guesses.length > 0
+        ? (
+            opponent.guesses.reduce((sum, g) => sum + g.feedback.green, 0) /
+            opponent.guesses.length
+          ).toFixed(1)
+        : 0,
+  };
+
+
+  const isDraw = currentRoom.winner === "DRAW";
+
+  return (
+    <div className="bg-white rounded-2xl shadow-2xl p-8">
+      <div className="text-center mb-6">
+        <h3 className="text-2xl font-bold text-gray-800 mb-2">📊 Game Recap</h3>
+        <p className="text-gray-600">
+          Room: {currentRoom.id} • {new Date().toLocaleDateString()}
+        </p>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-8">
+        {/* Your Guesses */}
+        <div>
+          <h4 className="text-lg font-bold text-gray-800 mb-4 text-center">
+            🎯 {myStats.name}'s Journey
+          </h4>
+          <div className="space-y-3">
+            {currentPlayer.guesses.map((guess, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xs bg-gray-200 px-2 py-1 rounded font-bold">
+                    #{index + 1}
+                  </span>
+                  <span className="font-mono text-lg font-bold">
+                    {guess.guess}
+                  </span>
+                </div>
+                {renderFeedback(guess.feedback)}
+              </div>
+            ))}
+            {currentPlayer.guesses.length === 0 && (
+              <p className="text-gray-500 italic text-center py-4">
+                No guesses made
+              </p>
+            )}
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <strong>Target:</strong>{" "}
+              <span className="font-mono">{opponent.sequence}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Opponent's Guesses */}
+        <div>
+          <h4 className="text-lg font-bold text-gray-800 mb-4 text-center">
+            🎯 {opponentStats.name}'s Journey
+          </h4>
+          <div className="space-y-3">
+            {opponent.guesses.map((guess, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xs bg-gray-200 px-2 py-1 rounded font-bold">
+                    #{index + 1}
+                  </span>
+                  <span className="font-mono text-lg font-bold">
+                    {guess.guess}
+                  </span>
+                </div>
+                {renderFeedback(guess.feedback)}
+              </div>
+            ))}
+            {opponent.guesses.length === 0 && (
+              <p className="text-gray-500 italic text-center py-4">
+                No guesses made
+              </p>
+            )}
+          </div>
+          <div className="mt-4 p-3 bg-orange-50 rounded-lg">
+            <p className="text-sm text-orange-700">
+              <strong>Target:</strong>{" "}
+              <span className="font-mono">{currentPlayer.sequence}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Game Summary */}
+      <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+        <div className="grid md:grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="text-2xl font-bold text-blue-600">
+              {myStats.guesses} vs {opponentStats.guesses}
+            </div>
+            <div className="text-sm text-gray-600">Total Guesses</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-purple-600">
+              {currentRoom.sequenceLength}
+            </div>
+            <div className="text-sm text-gray-600">Sequence Length</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-green-600">
+              {isDraw ? "DRAW" : currentRoom.winner}
+            </div>
+            <div className="text-sm text-gray-600">Winner</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Feedback Legend */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+        <h4 className="font-semibold mb-2 text-center">Feedback Legend:</h4>
+        <div className="flex justify-center space-x-6 text-sm">
+          <div className="flex items-center space-x-1">
+            <CheckCircle size={14} className="text-green-600" />
+            <span>Correct position</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <AlertTriangle size={14} className="text-yellow-600" />
+            <span>Wrong position</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <XCircle size={14} className="text-red-600" />
+            <span>Not in sequence</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Social Media Ready */}
+      <div className="mt-6 text-center">
+        <p className="text-xs text-gray-500 mb-2">
+          📸 Perfect for screenshots and social sharing!
+        </p>
+        <div className="inline-flex items-center space-x-2 text-xs text-gray-400">
+          <span>🎮 Number Guessing Game</span>
+          <span>•</span>
+          <span>Room {currentRoom.id}</span>
+          <span>•</span>
+          <span>{new Date().toLocaleDateString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GameOver = ({ currentRoom, currentPlayer, onPlayAgain }) => {
+  const [showDetailedRecap, setShowDetailedRecap] = useState(false);
+
+  const isWinner = currentRoom.winner === currentPlayer.name;
+  const isDraw = currentRoom.winner === "DRAW";
+  const opponent = currentRoom.players.find((p) => p.id !== currentPlayer.id);
+
+  // Calculate quick stats
+  const myStats = {
+    name: currentPlayer.name,
+    guesses: currentPlayer.guesses.length,
+    sequence: currentPlayer.sequence,
+    avgGreen:
+      currentPlayer.guesses.length > 0
+        ? (
+            currentPlayer.guesses.reduce(
+              (sum, g) => sum + g.feedback.green,
+              0
+            ) / currentPlayer.guesses.length
+          ).toFixed(1)
+        : 0,
+  };
+
+  const opponentStats = {
+    name: opponent.name,
+    guesses: opponent.guesses.length,
+    sequence: opponent.sequence,
+    avgGreen:
+      opponent.guesses.length > 0
+        ? (
+            opponent.guesses.reduce((sum, g) => sum + g.feedback.green, 0) /
+            opponent.guesses.length
+          ).toFixed(1)
+        : 0,
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-600 p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Main Result Card */}
+        <div className="bg-white rounded-2xl shadow-2xl p-8 mb-6 text-center">
+          <div className="mb-6">
+            <div className="text-6xl mb-4">
+              {isDraw ? "🤝" : isWinner ? "🎉" : "😞"}
+            </div>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              Game Over!
+            </h2>
+            <p className="text-xl font-semibold">
+              {isDraw ? (
+                <span className="text-blue-600">It's a Draw!</span>
+              ) : (
+                <span className={isWinner ? "text-green-600" : "text-red-600"}>
+                  {isWinner ? "You Win!" : `${currentRoom.winner} Wins!`}
+                </span>
+              )}
+            </p>
+            {isDraw && (
+              <p className="text-sm text-gray-600 mt-2">
+                Both players solved it with the same number of guesses!
+              </p>
+            )}
+          </div>
+
+          {/* Quick Stats Comparison */}
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div
+              className={`p-4 rounded-lg ${
+                isWinner
+                  ? "bg-green-50 border-green-200"
+                  : "bg-gray-50 border-gray-200"
+              } border-2`}
+            >
+              <h3 className="font-bold text-lg mb-2">{myStats.name} (You)</h3>
+              <div className="space-y-1 text-sm">
+                <p>
+                  <strong>Guesses:</strong> {myStats.guesses}
+                </p>
+                <p>
+                  <strong>Sequence:</strong>{" "}
+                  <span className="font-mono">{myStats.sequence}</span>
+                </p>
+                <p>
+                  <strong>Avg Green:</strong> {myStats.avgGreen}
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={`p-4 rounded-lg ${
+                !isWinner && !isDraw
+                  ? "bg-green-50 border-green-200"
+                  : "bg-gray-50 border-gray-200"
+              } border-2`}
+            >
+              <h3 className="font-bold text-lg mb-2">{opponentStats.name}</h3>
+              <div className="space-y-1 text-sm">
+                <p>
+                  <strong>Guesses:</strong> {opponentStats.guesses}
+                </p>
+                <p>
+                  <strong>Sequence:</strong>{" "}
+                  <span className="font-mono">{opponentStats.sequence}</span>
+                </p>
+                <p>
+                  <strong>Avg Green:</strong> {opponentStats.avgGreen}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-4">
+            <button
+              onClick={() => setShowDetailedRecap(!showDetailedRecap)}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+            >
+              {showDetailedRecap
+                ? "📊 Hide Detailed Recap"
+                : "📊 Show Detailed Recap"}
+            </button>
+
+            <button
+              onClick={onPlayAgain}
+              className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 text-lg font-semibold transition-colors"
+            >
+              🎮 Play Again
+            </button>
+          </div>
+        </div>
+
+        {/* Detailed Recap (Toggleable) */}
+        {showDetailedRecap && (
+          <DetailedRecap 
+            currentRoom={currentRoom}
+            currentPlayer={currentPlayer}
+            opponent={opponent}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 
 const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
   const [mySequence, setMySequence] = useState("");
@@ -327,43 +717,6 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
     if (!/^\d+$/.test(sequence)) return false;
     const digits = sequence.split("");
     return new Set(digits).size === digits.length;
-  };
-
-  // Render feedback icons
-  const renderFeedback = (feedback) => {
-    return (
-      <div className="flex items-center space-x-3 mt-1">
-        {feedback.green > 0 && (
-          <div className="flex items-center space-x-1">
-            <CheckCircle size={16} className="text-green-600" />
-            <span className="text-sm font-semibold text-green-600">
-              {feedback.green}
-            </span>
-          </div>
-        )}
-        {feedback.yellow > 0 && (
-          <div className="flex items-center space-x-1">
-            <AlertTriangle size={16} className="text-yellow-600" />
-            <span className="text-sm font-semibold text-yellow-600">
-              {feedback.yellow}
-            </span>
-          </div>
-        )}
-        {feedback.red > 0 && (
-          <div className="flex items-center space-x-1">
-            <XCircle size={16} className="text-red-600" />
-            <span className="text-sm font-semibold text-red-600">
-              {feedback.red}
-            </span>
-          </div>
-        )}
-        {feedback.green === 0 &&
-          feedback.yellow === 0 &&
-          feedback.red === 0 && (
-            <span className="text-gray-400 text-sm">No feedback</span>
-          )}
-      </div>
-    );
   };
 
   // SEQUENCE SETTING PHASE
@@ -459,60 +812,12 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
 
   // GAME OVER
   if (currentRoom.gameState === "gameOver") {
-    const isWinner = currentRoom.winner === currentPlayer.name;
-    const isDraw = currentRoom.winner === "DRAW";
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-          <div className="mb-6">
-            <div className="text-6xl mb-4">
-              {isDraw ? "🤝" : isWinner ? "🎉" : "😞"}
-            </div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              Game Over!
-            </h2>
-            <p className="text-xl font-semibold">
-              {isDraw ? (
-                <span className="text-blue-600">It's a Draw!</span>
-              ) : (
-                <span className={isWinner ? "text-green-600" : "text-red-600"}>
-                  {isWinner ? "You Win!" : `${currentRoom.winner} Wins!`}
-                </span>
-              )}
-            </p>
-            {isDraw && (
-              <p className="text-sm text-gray-600 mt-2">
-                Both players solved it with the same number of guesses!
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-4 mb-6">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Final Stats:</h3>
-              <p>Your guesses: {currentPlayer.guesses.length}</p>
-              <p>
-                {opponent?.name}'s guesses: {opponent?.guesses.length}
-              </p>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Secret Sequences:</h3>
-              <p>Your sequence: {currentPlayer.sequence}</p>
-              <p>
-                {opponent?.name}'s sequence: {opponent?.sequence}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 text-lg font-semibold"
-          >
-            Play Again
-          </button>
-        </div>
-      </div>
+      <GameOver
+        currentRoom={currentRoom}
+        currentPlayer={currentPlayer}
+        onPlayAgain={() => window.location.reload()}
+      />
     );
   }
 
@@ -523,13 +828,21 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
         {/* Game Header */}
         <div className="bg-white rounded-2xl shadow-2xl p-6 mb-6">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">
-                Room: {currentRoom.id}
-              </h1>
-              <p className="text-gray-600">
-                {currentRoom.sequenceLength}-digit sequences
-              </p>
+            <div className="flex items-center space-x-4">
+              {/* Room Info */}
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">
+                  Room: {currentRoom.id}
+                </h1>
+                <p className="text-gray-600">
+                  {currentRoom.sequenceLength}-digit sequences
+                </p>
+              </div>
+              {/* 🆕 My sequence (compact version) */}
+              <MySequenceDisplay
+                sequence={currentPlayer?.sequence}
+                sequenceLength={currentRoom.sequenceLength}
+              />
             </div>
             <div className="text-center">
               {currentRoom.gameState === "finalChance" ? (
