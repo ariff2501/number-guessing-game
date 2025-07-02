@@ -114,7 +114,12 @@ io.on("connection", (socket) => {
       socket.join(data.roomCode);
 
       if (room.gameState === "paused") {
-        room.gameState = "playing"; // Resume game
+        if (room.originalGameState) {
+          room.gameState = room.originalGameState; // Restore what it was!
+          delete room.originalGameState; // Clean up
+        } else {
+          room.gameState = "playing"; // Fallback
+        }
       }
 
       socket.emit("join-success", room); // Tell the reconnecting player
@@ -340,7 +345,8 @@ io.on("connection", (socket) => {
           room.gameState === "playing" ||
           room.gameState === "finalChance"
         ) {
-          // Active game - pause and wait for reconnection
+          // 🔧 FIX: Save the original game state before pausing
+          room.originalGameState = room.gameState; // Save what it was!
           room.gameState = "paused";
           room.pausedReason = `${playerName} disconnected`;
 
