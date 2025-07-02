@@ -744,13 +744,38 @@ function App() {
       console.log("🔄 Game updated:", room);
       setCurrentRoom(room);
     });
+    // Handle successful reconnection
+    newSocket.on("join-success", (room) => {
+      console.log("✅ Successfully joined/reconnected!");
+      setCurrentRoom(room);
+      setLoading(false);
 
+      if (
+        room.gameState === "setSequences" ||
+        room.gameState === "playing" ||
+        room.gameState === "finalChance"
+      ) {
+        setCurrentView("game");
+      } else {
+        setCurrentView("waiting");
+      }
+    });
+    // Handle when someone else reconnects
+    newSocket.on("player-reconnected", (data) => {
+      console.log("👥 Player reconnected:", data.playerName);
+      setCurrentRoom(data.room);
+      // Maybe show a brief message: "PlayerName is back!"
+    });
     // Player disconnected
-    newSocket.on("player-disconnected", (playerName) => {
-      console.log("👋 Player disconnected:", playerName);
-      alert(`${playerName} has left the game`);
-      setCurrentView("landing");
-      setCurrentRoom(null);
+    newSocket.on("player-disconnected", (data) => {
+      if (data.gameState === "playing" || data.gameState === "finalChance") {
+        alert(
+          `${data.playerName} disconnected. Game is paused. They can rejoin using the same room code and name.`
+        );
+      } else {
+        alert(`${data.playerName} has left the game`);
+        setCurrentView("landing");
+      }
     });
 
     // General error

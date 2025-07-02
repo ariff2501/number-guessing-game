@@ -104,33 +104,52 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (room.players.length >= 2) {
+    // 🧠 SMART LOGIC: Check if player is reconnecting
+    const existingPlayer = room.players.find((p) => p.name === data.playerName);
+
+    if (existingPlayer && !existingPlayer.connected) {
+      // 🔄 RECONNECTION: Player was in game but disconnected
+      existingPlayer.id = socket.id;
+      existingPlayer.connected = true;
+      socket.join(data.roomCode);
+
+      if (room.gameState === "paused") {
+        room.gameState = "playing"; // Resume game
+      }
+
+      socket.emit("join-success", room); // Tell the reconnecting player
+      io.to(data.roomCode).emit("player-reconnected", {
+        playerName: data.playerName,
+        room: room,
+      });
+
+      console.log(`🔄 ${data.playerName} reconnected to room ${data.roomCode}`);
+    } else if (existingPlayer && existingPlayer.connected) {
+      // ❌ ERROR: Player already connected (duplicate)
+      socket.emit("join-error", "Player already connected to this room");
+    } else if (room.players.length >= 2) {
+      // ❌ ERROR: Room is full
       socket.emit("join-error", "Room is full");
-      return;
+    } else {
+      // ✅ NEW JOIN: Normal join process
+      room.players.push({
+        id: socket.id,
+        name: data.playerName,
+        playerNumber: room.players.length + 1,
+        sequence: "",
+        guesses: [],
+        connected: true,
+      });
+
+      if (room.players.length === 2) {
+        room.gameState = "setSequences";
+      }
+
+      socket.join(data.roomCode);
+      io.to(data.roomCode).emit("player-joined", room);
+
+      console.log(`👥 ${data.playerName} joined room ${data.roomCode}`);
     }
-
-    if (room.gameState !== "waiting") {
-      socket.emit("join-error", "Game already started");
-      return;
-    }
-
-    // Add player 2
-    room.players.push({
-      id: socket.id,
-      name: data.playerName,
-      playerNumber: 2,
-      sequence: "",
-      guesses: [],
-    });
-
-    room.gameState = "setSequences";
-
-    socket.join(data.roomCode);
-
-    // Notify both players
-    io.to(data.roomCode).emit("player-joined", room);
-
-    console.log(`🎮 ${data.playerName} joined room ${data.roomCode}`);
   });
 
   // SET SEQUENCE EVENT
@@ -297,20 +316,47 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("👤 Player disconnected:", socket.id);
 
-    // Find and update rooms where this player was
     for (let [roomCode, room] of gameRooms) {
-      const playerIndex = room.players.findIndex((p) => p.id === socket.id);
-      if (playerIndex !== -1) {
-        const playerName = room.players[playerIndex].name;
+      const player = room.players.find((p) => p.id === socket.id);
+      if (player) {
+        const playerName = player.name;
+
+        // Mark as disconnected (don't remove from array)
+        player.connected = false;
+        player.disconnectedAt = new Date();
 
         // Notify other players
-        socket.to(roomCode).emit("player-disconnected", playerName);
+        socket.to(roomCode).emit("player-disconnected", {
+          playerName: playerName,
+          gameState: room.gameState,
+        });
 
-        // Remove room if empty or in waiting state
-        if (room.players.length === 1 || room.gameState === "waiting") {
+        // Handle different game states
+        if (room.gameState === "waiting") {
+          // Waiting room - delete immediately
           gameRooms.delete(roomCode);
-          console.log(`🗑️ Room ${roomCode} deleted - player left`);
+          console.log(`🗑️ Room ${roomCode} deleted - waiting room abandoned`);
+        } else if (
+          room.gameState === "playing" ||
+          room.gameState === "finalChance"
+        ) {
+          // Active game - pause and wait for reconnection
+          room.gameState = "paused";
+          room.pausedReason = `${playerName} disconnected`;
+
+          // Auto-cleanup after 10 minutes
+          setTimeout(() => {
+            if (gameRooms.has(roomCode) && room.gameState === "paused") {
+              gameRooms.delete(roomCode);
+              console.log(`🗑️ Room ${roomCode} auto-deleted after timeout`);
+            }
+          }, 10 * 60 * 1000); // 10 minutes
+
+          console.log(
+            `⏸️ Room ${roomCode} paused - ${playerName} can reconnect`
+          );
         }
+
         break;
       }
     }
