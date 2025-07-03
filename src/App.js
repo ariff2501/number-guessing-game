@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { io } from "socket.io-client";
-import { Users, Plus, LogIn, Gamepad2, Copy, Check } from "lucide-react"; // Add these imports at the top with the other imports
+import { Users, Plus, LogIn, Gamepad2, Copy, Check, X } from "lucide-react"; // Add these imports at the top with the other imports
 import {
   Target,
   Eye,
@@ -661,6 +661,45 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
   const [mySequence, setMySequence] = useState("");
   const [currentGuess, setCurrentGuess] = useState("");
   const [showSequence, setShowSequence] = useState(false);
+  // 🆕 ADD: Turn reminder notification state
+  const [showTurnReminder, setShowTurnReminder] = useState(false);
+  const [turnReminderTimer, setTurnReminderTimer] = useState(null);
+
+  // 🆕 ADD: Turn reminder effect
+  useEffect(() => {
+    // Clear any existing timer
+    if (turnReminderTimer) {
+      clearTimeout(turnReminderTimer);
+      setTurnReminderTimer(null);
+    }
+    
+    // Hide any existing notification
+    setShowTurnReminder(false);
+
+    // Only set timer if it's playing state and my turn
+    if (currentRoom.gameState === 'playing' || currentRoom.gameState === 'finalChance') {
+      const isMyTurn = currentRoom.currentTurn === currentPlayer.playerNumber;
+      
+      if (isMyTurn) {
+        console.log('🔔 Starting turn reminder timer (20 seconds)');
+        
+        const timer = setTimeout(() => {
+          console.log('⏰ Turn reminder triggered!');
+          setShowTurnReminder(true);
+        }, 10000); // 20 seconds
+        
+        setTurnReminderTimer(timer);
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      if (turnReminderTimer) {
+        clearTimeout(turnReminderTimer);
+      }
+    };
+  }, [currentRoom.currentTurn, currentRoom.gameState]); // Trigger when turn or game state changes
+
 
   if (!currentRoom || !currentPlayer) {
     return <div>Loading...</div>;
@@ -716,6 +755,38 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
     if (!/^\d+$/.test(sequence)) return false;
     const digits = sequence.split("");
     return new Set(digits).size === digits.length;
+  };
+
+  // 🆕 ADD: Turn reminder notification component
+  const TurnReminderNotification = () => {
+    if (!showTurnReminder) return null;
+
+    return (
+      <div className="fixed top-4 right-4 z-50 max-w-sm">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-2xl border border-blue-300 animate-pulse">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="text-2xl">🔔</div>
+              <div>
+                <div className="font-bold text-sm">Hey, it's your turn!</div>
+                <div className="text-xs opacity-90 mt-1">
+                  {currentRoom.gameState === 'finalChance' 
+                    ? 'This is your final chance to tie!'
+                    : 'Make your guess when you\'re ready'
+                  }
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowTurnReminder(false)}
+              className="text-white hover:text-gray-200 transition-colors ml-2"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // SEQUENCE SETTING PHASE
@@ -823,6 +894,8 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
   // PLAYING PHASE
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 p-4">
+      {/* 🆕 ADD: Turn reminder notification */}
+      <TurnReminderNotification />
       <div className="max-w-6xl mx-auto">
         {/* Game Header */}
         <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 mb-6">
