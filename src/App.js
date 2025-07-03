@@ -55,12 +55,13 @@ const LandingPage = ({ connected, setCurrentView }) => (
       </div>
 
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-semibold text-blue-800 mb-2">How to Play:</h3>
+        <h3 className="font-semibold text-blue-800 mb-2">Quick Guide:</h3>
         <ul className="text-sm text-blue-700 space-y-1">
           <li>🎯 Guess your opponent's secret number sequence</li>
           <li>🟢 Green = correct number & position</li>
           <li>🟡 Yellow = correct number, wrong position</li>
           <li>🔴 Red = number not in sequence</li>
+          <li>🔄 Lost connection? Rejoin with the same room ID & username</li>
         </ul>
       </div>
     </div>
@@ -191,7 +192,11 @@ const JoinGame = ({
             disabled={loading}
           />
         </div>
-
+        <div className="text-center">
+          <p className="text-xs text-gray-500">
+            💡 Trying to reconnect? Use your original name and room code
+          </p>
+        </div>
         <div className="space-y-3 pt-4">
           <button
             onClick={onJoinRoom}
@@ -238,7 +243,9 @@ const WaitingRoom = ({
             <Copy size={24} />
           )}
         </div>
-        <div className="text-xs text-gray-500 mt-2">Click to copy</div>
+        <div className="text-xs text-gray-500 mt-2">
+          💡 Click to copy • Save this code to reconnect if needed
+        </div>
       </div>
 
       <div className="mb-6">
@@ -672,22 +679,25 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
       clearTimeout(turnReminderTimer);
       setTurnReminderTimer(null);
     }
-    
+
     // Hide any existing notification
     setShowTurnReminder(false);
 
     // Only set timer if it's playing state and my turn
-    if (currentRoom.gameState === 'playing' || currentRoom.gameState === 'finalChance') {
+    if (
+      currentRoom.gameState === "playing" ||
+      currentRoom.gameState === "finalChance"
+    ) {
       const isMyTurn = currentRoom.currentTurn === currentPlayer.playerNumber;
-      
+
       if (isMyTurn) {
-        console.log('🔔 Starting turn reminder timer (20 seconds)');
-        
+        console.log("🔔 Starting turn reminder timer (20 seconds)");
+
         const timer = setTimeout(() => {
-          console.log('⏰ Turn reminder triggered!');
+          console.log("⏰ Turn reminder triggered!");
           setShowTurnReminder(true);
         }, 10000); // 20 seconds
-        
+
         setTurnReminderTimer(timer);
       }
     }
@@ -699,7 +709,6 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
       }
     };
   }, [currentRoom.currentTurn, currentRoom.gameState]); // Trigger when turn or game state changes
-
 
   if (!currentRoom || !currentPlayer) {
     return <div>Loading...</div>;
@@ -770,10 +779,9 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
               <div>
                 <div className="font-bold text-sm">Hey, it's your turn!</div>
                 <div className="text-xs opacity-90 mt-1">
-                  {currentRoom.gameState === 'finalChance' 
-                    ? 'This is your final chance to tie!'
-                    : 'Make your guess when you\'re ready'
-                  }
+                  {currentRoom.gameState === "finalChance"
+                    ? "This is your final chance to tie!"
+                    : "Make your guess when you're ready"}
                 </div>
               </div>
             </div>
