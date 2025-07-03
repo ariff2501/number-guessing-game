@@ -368,7 +368,6 @@ const DetailedRecap = ({ currentRoom, currentPlayer, opponent }) => {
         : 0,
   };
 
-
   const isDraw = currentRoom.winner === "DRAW";
 
   return (
@@ -647,7 +646,7 @@ const GameOver = ({ currentRoom, currentPlayer, onPlayAgain }) => {
 
         {/* Detailed Recap (Toggleable) */}
         {showDetailedRecap && (
-          <DetailedRecap 
+          <DetailedRecap
             currentRoom={currentRoom}
             currentPlayer={currentPlayer}
             opponent={opponent}
@@ -826,45 +825,60 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 p-4">
       <div className="max-w-6xl mx-auto">
         {/* Game Header */}
-        <div className="bg-white rounded-2xl shadow-2xl p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            {/* Left side: Room info + Sequence */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0">
               {/* Room Info */}
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-800">
                   Room: {currentRoom.id}
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   {currentRoom.sequenceLength}-digit sequences
                 </p>
               </div>
-              {/* 🆕 My sequence (compact version) */}
-              <MySequenceDisplay
-                sequence={currentPlayer?.sequence}
-                sequenceLength={currentRoom.sequenceLength}
-              />
+
+              {/* My sequence */}
+              <div className="flex-shrink-0">
+                <MySequenceDisplay
+                  sequence={currentPlayer?.sequence}
+                  sequenceLength={currentRoom.sequenceLength}
+                />
+              </div>
             </div>
-            <div className="text-center">
+
+            {/* Right side: Turn Display */}
+            <div className="flex-shrink-0 w-full sm:w-auto">
               {currentRoom.gameState === "finalChance" ? (
-                <div className="px-4 py-2 rounded-lg font-semibold bg-orange-100 text-orange-800 border-2 border-orange-300">
-                  ⚡ FINAL CHANCE!
-                  <div className="text-sm mt-1">
-                    {currentRoom.firstToSolve} solved it first!
+                <div className="px-3 sm:px-4 py-2 rounded-lg font-semibold bg-orange-100 text-orange-800 border-2 border-orange-300 text-center">
+                  <div className="text-sm sm:text-base">⚡ FINAL CHANCE!</div>
+                  <div className="text-xs sm:text-sm mt-1">
+                    {currentRoom.firstToSolve} solved first!
                     <br />
-                    {isMyTurn
-                      ? "🎯 Your last chance to tie!"
-                      : `⏳ ${opponent?.name}'s last chance!`}
+                    <span className="hidden sm:inline">
+                      {isMyTurn
+                        ? "🎯 Your last chance to tie!"
+                        : `⏳ ${opponent?.name}'s last chance!`}
+                    </span>
+                    <span className="sm:hidden">
+                      {isMyTurn
+                        ? "🎯 Your turn!"
+                        : `⏳ ${opponent?.name}'s turn!`}
+                    </span>
                   </div>
                 </div>
               ) : (
                 <div
-                  className={`px-4 py-2 rounded-lg font-semibold ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg font-semibold text-center ${
                     isMyTurn
                       ? "bg-green-100 text-green-800"
                       : "bg-yellow-100 text-yellow-800"
                   }`}
                 >
-                  {isMyTurn ? "🎯 Your Turn" : `⏳ ${opponent?.name}'s Turn`}
+                  <span className="text-sm sm:text-base">
+                    {isMyTurn ? "🎯 Your Turn" : `⏳ ${opponent?.name}'s Turn`}
+                  </span>
                 </div>
               )}
             </div>
