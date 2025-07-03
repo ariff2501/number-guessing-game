@@ -664,7 +664,13 @@ const GameOver = ({ currentRoom, currentPlayer, onPlayAgain }) => {
   );
 };
 
-const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
+const GameRoom = ({
+  currentRoom,
+  socket,
+  currentPlayer,
+  onCopyRoomCode,
+  copied,
+}) => {
   const [mySequence, setMySequence] = useState("");
   const [currentGuess, setCurrentGuess] = useState("");
   const [showSequence, setShowSequence] = useState(false);
@@ -912,8 +918,15 @@ const GameRoom = ({ currentRoom, socket, currentPlayer }) => {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0">
               {/* Room Info */}
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl font-bold text-gray-800">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
                   Room: {currentRoom.id}
+                  <button onClick={onCopyRoomCode} className="hover:opacity-70">
+                    {copied ? (
+                      <Check size={24} className="text-green-600" />
+                    ) : (
+                      <Copy size={24} />
+                    )}
+                  </button>
                 </h1>
                 <p className="text-sm sm:text-base text-gray-600">
                   {currentRoom.sequenceLength}-digit sequences
@@ -1278,6 +1291,8 @@ function App() {
             currentRoom={currentRoom}
             socket={socket}
             currentPlayer={currentPlayer}
+            onCopyRoomCode={handleCopyRoomCode}
+            copied={copied}
           />
         );
       default:
