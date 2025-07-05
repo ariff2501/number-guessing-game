@@ -78,7 +78,7 @@ io.on("connection", (socket) => {
           name: data.playerName,
           playerNumber: 1,
           sequence: "",
-          guesses: [],
+          guesses: []
         },
       ],
       gameState: "waiting", // waiting, setSequences, playing, gameOver
@@ -260,6 +260,7 @@ io.on("connection", (socket) => {
       guess: data.guess,
       feedback: feedback,
       timestamp: new Date(),
+      timeTaken: data.timeToGuess
     };
 
     currentPlayer.guesses.push(guessData);
@@ -313,7 +314,7 @@ io.on("connection", (socket) => {
 
     io.to(data.roomCode).emit("game-updated", room);
     console.log(
-      `🎯 ${currentPlayer.name} guessed ${data.guess} in room ${data.roomCode}`
+      `🎯 ${currentPlayer.name} guessed ${data.guess} in room ${data.roomCode} in ${data.timeToGuess} seconds`
     );
   });
 

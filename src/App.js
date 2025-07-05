@@ -274,6 +274,43 @@ const WaitingRoom = ({
     </div>
   </div>
 );
+
+const getFeedback = (guess, target, sequenceLength) => {
+  const guessArray = guess.split("");
+  const targetArray = target.split("");
+  let green = 0,
+    yellow = 0,
+    red = 0;
+
+  const targetUsed = new Array(targetArray.length).fill(false);
+  const guessUsed = new Array(guessArray.length).fill(false);
+
+  // Count greens (correct position)
+  for (let i = 0; i < guessArray.length; i++) {
+    if (guessArray[i] === targetArray[i]) {
+      green++;
+      targetUsed[i] = true;
+      guessUsed[i] = true;
+    }
+  }
+
+  // Count yellows (correct number, wrong position)
+  for (let i = 0; i < guessArray.length; i++) {
+    if (!guessUsed[i]) {
+      for (let j = 0; j < targetArray.length; j++) {
+        if (!targetUsed[j] && guessArray[i] === targetArray[j]) {
+          yellow++;
+          targetUsed[j] = true;
+          break;
+        }
+      }
+    }
+  }
+
+  red = sequenceLength - green - yellow;
+  return { green, yellow, red };
+};
+
 // Render feedback icons
 const renderFeedback = (feedback) => {
   return (
@@ -345,36 +382,13 @@ const MySequenceDisplay = ({ sequence, sequenceLength }) => {
     </div>
   );
 };
-const DetailedRecap = ({ currentRoom, currentPlayer, opponent }) => {
-  // Calculate stats
-  const myStats = {
-    name: currentPlayer.name,
-    guesses: currentPlayer.guesses.length,
-    sequence: currentPlayer.sequence,
-    avgGreen:
-      currentPlayer.guesses.length > 0
-        ? (
-            currentPlayer.guesses.reduce(
-              (sum, g) => sum + g.feedback.green,
-              0
-            ) / currentPlayer.guesses.length
-          ).toFixed(1)
-        : 0,
-  };
-
-  const opponentStats = {
-    name: opponent.name,
-    guesses: opponent.guesses.length,
-    sequence: opponent.sequence,
-    avgGreen:
-      opponent.guesses.length > 0
-        ? (
-            opponent.guesses.reduce((sum, g) => sum + g.feedback.green, 0) /
-            opponent.guesses.length
-          ).toFixed(1)
-        : 0,
-  };
-
+const DetailedRecap = ({
+  currentRoom,
+  currentPlayer,
+  opponent,
+  myStats,
+  opponentStats,
+}) => {
   const isDraw = currentRoom.winner === "DRAW";
 
   return (
@@ -527,33 +541,36 @@ const GameOver = ({ currentRoom, currentPlayer, onPlayAgain }) => {
   const isDraw = currentRoom.winner === "DRAW";
   const opponent = currentRoom.players.find((p) => p.id !== currentPlayer.id);
 
+  const formatTime = (totalSeconds) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    if (minutes === 0) {
+      return `0 min ${seconds} seconds`;
+    } else if (minutes === 1) {
+      return `1 min ${seconds} seconds`;
+    } else {
+      return `${minutes} min ${seconds.toString().padStart(2, "0")} seconds`;
+    }
+  };
+
   // Calculate quick stats
   const myStats = {
     name: currentPlayer.name,
     guesses: currentPlayer.guesses.length,
     sequence: currentPlayer.sequence,
-    avgGreen:
-      currentPlayer.guesses.length > 0
-        ? (
-            currentPlayer.guesses.reduce(
-              (sum, g) => sum + g.feedback.green,
-              0
-            ) / currentPlayer.guesses.length
-          ).toFixed(1)
-        : 0,
+    timeTaken: formatTime(
+      currentPlayer.guesses.reduce((sum, item) => sum + item.timeTaken, 0)
+    ),
   };
 
   const opponentStats = {
     name: opponent.name,
     guesses: opponent.guesses.length,
     sequence: opponent.sequence,
-    avgGreen:
-      opponent.guesses.length > 0
-        ? (
-            opponent.guesses.reduce((sum, g) => sum + g.feedback.green, 0) /
-            opponent.guesses.length
-          ).toFixed(1)
-        : 0,
+    timeTaken: formatTime(
+      opponent.guesses.reduce((sum, item) => sum + item.timeTaken, 0)
+    ),
   };
 
   return (
@@ -603,7 +620,7 @@ const GameOver = ({ currentRoom, currentPlayer, onPlayAgain }) => {
                   <span className="font-mono">{myStats.sequence}</span>
                 </p>
                 <p>
-                  <strong>Avg Green:</strong> {myStats.avgGreen}
+                  <strong>Time Taken:</strong> {myStats.timeTaken}
                 </p>
               </div>
             </div>
@@ -625,7 +642,7 @@ const GameOver = ({ currentRoom, currentPlayer, onPlayAgain }) => {
                   <span className="font-mono">{opponentStats.sequence}</span>
                 </p>
                 <p>
-                  <strong>Avg Green:</strong> {opponentStats.avgGreen}
+                  <strong>Time Taken:</strong> {opponentStats.timeTaken}
                 </p>
               </div>
             </div>
@@ -657,6 +674,8 @@ const GameOver = ({ currentRoom, currentPlayer, onPlayAgain }) => {
             currentRoom={currentRoom}
             currentPlayer={currentPlayer}
             opponent={opponent}
+            currentPlayerStat={myStats}
+            opponentStat={opponentStats}
           />
         )}
       </div>
@@ -677,6 +696,36 @@ const GameRoom = ({
   // 🆕 ADD: Turn reminder notification state
   const [showTurnReminder, setShowTurnReminder] = useState(false);
   const [turnReminderTimer, setTurnReminderTimer] = useState(null);
+  // ADD : timing state
+  const [turnStartTime, setTurnStartTime] = useState(null);
+  const [currentTurnTime, setCurrentTurnTime] = useState(0);
+  // ADD : number checking assistant state
+  const [numberToCheck, setNumberToCheck] = useState("");
+  const [conflictingGuesses, setConflictingGuesses] = useState([]);
+
+  // ADD : Track turn timing
+  useEffect(() => {
+    const isMyTurn = currentRoom.currentTurn === currentPlayer.playerNumber;
+
+    if (
+      isMyTurn &&
+      (currentRoom.gameState === "playing" ||
+        currentRoom.gameState === "finalChance")
+    ) {
+      const startTime = Date.now();
+      setTurnStartTime(startTime);
+
+      // Update current turn time every second
+      const interval = setInterval(() => {
+        setCurrentTurnTime((Date.now() - startTime) / 1000);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setTurnStartTime(null);
+      setCurrentTurnTime(0);
+    }
+  }, [currentRoom.currentTurn, currentRoom.gameState]);
 
   // 🆕 ADD: Turn reminder effect
   useEffect(() => {
@@ -759,9 +808,42 @@ const GameRoom = ({
     socket.emit("make-guess", {
       roomCode: currentRoom.id,
       guess: currentGuess,
+      timeToGuess: currentTurnTime,
     });
 
     setCurrentGuess("");
+  };
+
+  const handleCheckNumber = (value) => {
+    const myGuesses = currentPlayer.guesses;
+    const conflicts = [];
+
+    // Use the passed value instead of numberToCheck state
+    const checkValue = value || numberToCheck;
+
+    for (let i = 0; i < myGuesses.length; i++) {
+      const guess = myGuesses[i];
+      const calculatedFeedback = getFeedback(
+        guess.guess,
+        checkValue,
+        currentRoom.sequenceLength
+      );
+      const expectedFeedback = guess.feedback;
+
+      // console.log("to check :", checkValue);
+      // console.log("calculated : ", calculatedFeedback);
+      // console.log("original test : ", guess.guess);
+      // console.log("expected : ", expectedFeedback);
+      // Check if feedback doesn't match
+      if (
+        calculatedFeedback.green !== expectedFeedback.green ||
+        calculatedFeedback.yellow !== expectedFeedback.yellow ||
+        calculatedFeedback.red !== expectedFeedback.red
+      ) {
+        conflicts.push(i); // Store the index of conflicting guess
+      }
+    }
+    setConflictingGuesses(conflicts);
   };
 
   // Validate sequence helper
@@ -986,7 +1068,45 @@ const GameRoom = ({
               Make Your Guess
             </h2>
 
-            <div className="space-y-4">
+            {/* Sticky Input Section - Only on small screens */}
+            <div className="lg:hidden sticky top-4 z-20 bg-white rounded-xl shadow-lg border border-gray-200 p-4 mb-6">
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={currentGuess}
+                  onChange={(e) => {
+                    const value = e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, currentRoom.sequenceLength);
+                    setCurrentGuess(value);
+                  }}
+                  disabled={!isMyTurn}
+                  className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xl text-center font-mono ${
+                    !isMyTurn ? "bg-gray-100" : ""
+                  }`}
+                  placeholder={
+                    isMyTurn
+                      ? `Enter ${currentRoom.sequenceLength} digits`
+                      : "Wait for your turn..."
+                  }
+                  maxLength={currentRoom.sequenceLength}
+                />
+
+                <button
+                  onClick={handleMakeGuess}
+                  disabled={
+                    currentGuess.length !== currentRoom.sequenceLength ||
+                    !isMyTurn
+                  }
+                  className="w-full bg-blue-600 text-white py-2.5 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-base font-semibold"
+                >
+                  {isMyTurn ? "Submit Guess" : "Wait for your turn"}
+                </button>
+              </div>
+            </div>
+
+            {/* Regular Input Section - Hidden on small screens, shown on large */}
+            <div className="hidden lg:block space-y-4">
               <input
                 type="text"
                 value={currentGuess}
@@ -1020,7 +1140,7 @@ const GameRoom = ({
               </button>
             </div>
 
-            {/* Feedback Legend */}
+            {/* Feedback Legend - Always in original position */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold mb-2">Feedback Legend:</h3>
               <div className="space-y-1 text-sm">
@@ -1045,10 +1165,19 @@ const GameRoom = ({
             <h2 className="text-xl font-bold text-gray-800 mb-4">
               Your Guess History
             </h2>
-
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {currentPlayer.guesses.map((guess, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                <div
+                  key={index}
+                  className={`p-3 rounded-lg ${
+                    numberToCheck.length !== currentRoom.sequenceLength ||
+                    !validateSequence(numberToCheck, currentRoom.sequenceLength)
+                      ? "bg-gray-50" // grey when no number to check
+                      : conflictingGuesses.includes(index)
+                      ? "bg-red-100 border-2 border-red-300" // red for conflicts
+                      : "bg-green-50" // green for matches
+                  }`}
+                >
                   <div className="flex justify-between items-center">
                     <span className="font-mono text-lg font-bold">
                       {guess.guess}
@@ -1063,6 +1192,51 @@ const GameRoom = ({
                   No guesses yet. Make your first guess!
                 </p>
               )}
+            </div>
+            {/* Input Section */}
+            <div className="flex items-center space-x-2 mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <input
+                type="text"
+                placeholder="Check possible answer"
+                value={numberToCheck}
+                onChange={(e) => {
+                  const value = e.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, currentRoom.sequenceLength);
+                  setNumberToCheck(value);
+                  // Clear conflicts when input is cleared
+                  if (
+                    value.length !== currentRoom.sequenceLength ||
+                    !validateSequence(value, currentRoom.sequenceLength)
+                  ) {
+                    setConflictingGuesses([]);
+                    //setFireCheckNumber(false)
+                  } else {
+                    handleCheckNumber(value);
+                  }
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span
+                className={`text-sm ${
+                  numberToCheck.length === currentRoom.sequenceLength &&
+                  !validateSequence(numberToCheck, currentRoom.sequenceLength)
+                    ? "text-red-500"
+                    : "text-gray-500"
+                }`}
+              >
+                {numberToCheck.length === currentRoom.sequenceLength &&
+                !validateSequence(numberToCheck, currentRoom.sequenceLength)
+                  ? "Sequence not valid"
+                  : "Enter a sequence to check possible answer"}
+              </span>
+              {/* <button
+                disabled={numberToCheck.length !== currentRoom.sequenceLength}
+                onClick={handleCheckNumber}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+              >
+                Guess
+              </button> */}
             </div>
           </div>
         </div>
